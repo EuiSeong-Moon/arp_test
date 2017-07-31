@@ -87,14 +87,14 @@ int main( int argc, char * argv[] )
     Arps* arp;
     char *dev;
 
-    dev="ens33";//ens33
-    char arg1[]="192.168.140.129";
-    char arg2[]="192.168.140.1";
+    dev=argv[1];//ens33
+   // char arg1[]=argv[2];
+   // char arg2[]=argv[3];
     vector<char*>senders;
     vector<char*>targets;
     vector<int>realsender;
     vector<int>realtarget;
-    char *ptr = strtok(arg1,".");      // " " 공백 문자를 기준으로 문자열을 자름, 포인터 반환
+    char *ptr = strtok(argv[2],".");      // " " 공백 문자를 기준으로 문자열을 자름, 포인터 반환
 
 
     while (ptr != NULL)               // 자른 문자열이 나오지 않을 때까지 반복
@@ -106,7 +106,7 @@ int main( int argc, char * argv[] )
     for(int i=0;i<senders.size();i++)
         realsender.push_back(atoi(senders.at(i)));
 
-    char *ptr2 = strtok(arg2,".");      // " " 공백 문자를 기준으로 문자열을 자름, 포인터 반환
+    char *ptr2 = strtok(argv[3],".");      // " " 공백 문자를 기준으로 문자열을 자름, 포인터 반환
     while (ptr2 != NULL)               // 자른 문자열이 나오지 않을 때까지 반복
     {
         // 자른 문자열 출력
